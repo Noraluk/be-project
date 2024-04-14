@@ -24,6 +24,8 @@ type BaseRepository[T any] interface {
 	Where(query interface{}, args ...interface{}) BaseRepository[T]
 	Joins(query string, args ...interface{}) BaseRepository[T]
 	Group(name string) BaseRepository[T]
+	Order(value interface{}) BaseRepository[T]
+	Count(count *int64) BaseRepository[T]
 
 	Transaction(fc func(tx *gorm.DB) error, opts ...*sql.TxOptions) error
 
@@ -34,6 +36,7 @@ type BaseRepository[T any] interface {
 	Session(config *gorm.Session) BaseRepository[T]
 
 	Clauses(conds ...clause.Expression) BaseRepository[T]
+	Scopes(funcs ...func(*gorm.DB) *gorm.DB) BaseRepository[T]
 
 	Error() error
 	RowsAffected() int64
@@ -115,6 +118,14 @@ func (b baseRepository[T]) Group(name string) BaseRepository[T] {
 	return Wrap[T](b.db.Group(name))
 }
 
+func (b baseRepository[T]) Order(value interface{}) BaseRepository[T] {
+	return Wrap[T](b.db.Order(value))
+}
+
+func (b baseRepository[T]) Count(count *int64) BaseRepository[T] {
+	return Wrap[T](b.db.Count(count))
+}
+
 func (b baseRepository[T]) Transaction(fc func(tx *gorm.DB) error, opts ...*sql.TxOptions) error {
 	return b.db.Transaction(fc, opts...)
 }
@@ -137,6 +148,10 @@ func (b baseRepository[T]) Session(config *gorm.Session) BaseRepository[T] {
 
 func (b baseRepository[T]) Clauses(conds ...clause.Expression) BaseRepository[T] {
 	return Wrap[T](b.db.Clauses(conds...))
+}
+
+func (b baseRepository[T]) Scopes(funcs ...func(*gorm.DB) *gorm.DB) BaseRepository[T] {
+	return Wrap[T](b.db.Scopes(funcs...))
 }
 
 func (b baseRepository[T]) Error() error {

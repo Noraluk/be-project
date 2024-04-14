@@ -1,6 +1,7 @@
 package main
 
 import (
+	"be-project/api/routes"
 	"be-project/pkg/config"
 	"be-project/pkg/database"
 	"be-project/pkg/logger"
@@ -37,6 +38,7 @@ func main() {
 			return c.Status(code).JSON(e)
 		},
 	})
+	routes.NewRoutes(app)
 
 	app.Listen(":3000")
 
