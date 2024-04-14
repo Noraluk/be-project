@@ -4,14 +4,12 @@ import (
 	"be-project/api/routes"
 	"be-project/pkg/config"
 	"be-project/pkg/database"
-	"be-project/pkg/logger"
 	"encoding/json"
 	"errors"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 )
-
-var log logger.Logger = logger.WithPrefix("main")
 
 func main() {
 	err := config.Init()
@@ -38,9 +36,8 @@ func main() {
 			return c.Status(code).JSON(e)
 		},
 	})
+	app.Use(cors.New())
+
 	routes.NewRoutes(app)
-
-	app.Listen(":3000")
-
-	log.Wrap("start server!").Info()
+	app.Listen(":8080")
 }
