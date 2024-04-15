@@ -1,15 +1,17 @@
 package services
 
 import (
+	"be-project/api/dtos"
 	"be-project/api/entities"
 	"be-project/api/utils"
 	"be-project/pkg/base"
 
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm"
 )
 
 type PokemonService interface {
-	GetPokemons(c *fiber.Ctx) ([]entities.Pokemon, int64, error)
+	GetPokemons(c *fiber.Ctx) ([]dtos.PokemonList, int64, error)
 }
 
 type pokemonService struct {
@@ -22,16 +24,18 @@ func NewPokemonService(repository base.BaseRepository[any]) PokemonService {
 	}
 }
 
-func (s pokemonService) GetPokemons(c *fiber.Ctx) ([]entities.Pokemon, int64, error) {
-	var pokemons []entities.Pokemon
+func (s pokemonService) GetPokemons(c *fiber.Ctx) ([]dtos.PokemonList, int64, error) {
+	var pokemons []dtos.PokemonList
 
-	err := s.repository.Scopes(utils.Paginate(c)).Order("ID asc").Find(&pokemons).Error()
+	err := s.repository.Table(entities.PokemonTableName).Scopes(utils.Paginate(c)).Preload("PokemonTypes", func(db *gorm.DB) *gorm.DB {
+		return db.Table(entities.PokemonTypeTableName)
+	}).Order("ID asc").Find(&pokemons).Error()
 	if err != nil {
 		return nil, 0, err
 	}
 
 	var totalRecords int64
-	err = s.repository.Model(&entities.Pokemon{}).Count(&totalRecords).Error()
+	err = s.repository.Table(entities.PokemonTableName).Count(&totalRecords).Error()
 	if err != nil {
 		return nil, 0, err
 	}
