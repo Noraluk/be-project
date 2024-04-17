@@ -9,6 +9,7 @@ import (
 
 type PokemonHandler interface {
 	GetPokemons(c *fiber.Ctx) error
+	GetPokemon(c *fiber.Ctx) error
 }
 
 type pokemonHandler struct {
@@ -32,4 +33,20 @@ func (h pokemonHandler) GetPokemons(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(models.Response{
 		Data: pokemons,
 	}.ToPagination(c, totalRecords))
+}
+
+func (h pokemonHandler) GetPokemon(c *fiber.Ctx) error {
+	pokemonID, err := c.ParamsInt("id")
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
+
+	pokemon, err := h.pokemonService.GetPokemon(pokemonID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	}
+
+	return c.Status(fiber.StatusOK).JSON(models.Response{
+		Data: pokemon,
+	})
 }

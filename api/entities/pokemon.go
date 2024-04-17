@@ -6,6 +6,7 @@ const (
 
 type Pokemon struct {
 	ID                                   int     `gorm:"primaryKey" json:"id"`
+	PokemonID                            int     `json:"pokemon_id"`
 	Name                                 string  `json:"name"`
 	SpriteFrontDefaultShowdownURL        string  `json:"sprite_front_default_showdown_url"`
 	SpriteFrontDefaultOfficialArtworkURL string  `json:"sprite_front_default_official_artwork_url"`

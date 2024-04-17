@@ -10,4 +10,5 @@ func NewRoutes(app *fiber.App) {
 	// pokemon
 	pokemonGroup := apiGroup.Group("/pokemons")
 	pokemonGroup.Get("", handler.pokemon.GetPokemons)
+	pokemonGroup.Get("/:id", handler.pokemon.GetPokemon)
 }
