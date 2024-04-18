@@ -11,17 +11,21 @@ func (m Response) ToPagination(c *fiber.Ctx, totalRecords int64) PaginationRespo
 	if totalRecords%int64(c.QueryInt("page_size")) != 0 {
 		totalPages += 1
 	}
+	page := c.QueryInt("page")
+	if page == 0 {
+		page = 1
+	}
 	return PaginationResponse{
 		Response:     m,
 		TotalRecords: totalRecords,
 		TotalPages:   totalPages,
-		CurrentPage:  c.QueryInt("page"),
+		CurrentPage:  page,
 	}
 }
 
 type PaginationResponse struct {
 	Response
-	TotalRecords int64 `json:"totle_records"`
+	TotalRecords int64 `json:"total_records"`
 	CurrentPage  int   `json:"current_page"`
 	TotalPages   int64 `json:"total_pages"`
 }

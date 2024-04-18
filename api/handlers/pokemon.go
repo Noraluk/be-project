@@ -10,6 +10,7 @@ import (
 type PokemonHandler interface {
 	GetPokemons(c *fiber.Ctx) error
 	GetPokemon(c *fiber.Ctx) error
+	GetPokemonItems(c *fiber.Ctx) error
 }
 
 type pokemonHandler struct {
@@ -49,4 +50,15 @@ func (h pokemonHandler) GetPokemon(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(models.Response{
 		Data: pokemon,
 	})
+}
+
+func (h pokemonHandler) GetPokemonItems(c *fiber.Ctx) error {
+	items, totalRecords, err := h.pokemonService.GetPokemonItems(c)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	}
+
+	return c.Status(fiber.StatusOK).JSON(models.Response{
+		Data: items,
+	}.ToPagination(c, totalRecords))
 }

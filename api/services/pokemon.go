@@ -13,6 +13,7 @@ import (
 type PokemonService interface {
 	GetPokemons(c *fiber.Ctx) ([]dtos.PokemonList, int64, error)
 	GetPokemon(pokemonID int) (dtos.PokemonDetail, error)
+	GetPokemonItems(c *fiber.Ctx) ([]entities.PokemonItem, int64, error)
 }
 
 type pokemonService struct {
@@ -102,4 +103,20 @@ func (s pokemonService) GetPokemon(id int) (dtos.PokemonDetail, error) {
 	})
 
 	return pokemonDetail, nil
+}
+
+func (s pokemonService) GetPokemonItems(c *fiber.Ctx) ([]entities.PokemonItem, int64, error) {
+	var items []entities.PokemonItem
+	err := s.repository.Scopes(utils.Paginate(c)).Order("id asc").Find(&items).Error()
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var totalRecords int64
+	err = s.repository.Table(entities.PokemonItemTableName).Count(&totalRecords).Error()
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return items, totalRecords, nil
 }
