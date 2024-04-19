@@ -2,7 +2,7 @@ package dtos
 
 type PokemonList struct {
 	Pokemon
-	PokemonTypes []pokemonType `gorm:"foreignKey:PokemonID" json:"pokemon_types"`
+	PokemonTypes []pokemonType `gorm:"foreignKey:PokemonID;references:PokemonID" json:"pokemon_types"`
 }
 
 type PokemonDetail struct {

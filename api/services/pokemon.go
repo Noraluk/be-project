@@ -5,6 +5,7 @@ import (
 	"be-project/api/entities"
 	"be-project/api/utils"
 	"be-project/pkg/base"
+	"fmt"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -29,15 +30,29 @@ func NewPokemonService(repository base.BaseRepository[any]) PokemonService {
 func (s pokemonService) GetPokemons(c *fiber.Ctx) ([]dtos.PokemonList, int64, error) {
 	var pokemons []dtos.PokemonList
 
-	err := s.repository.Table(entities.PokemonTableName).Scopes(utils.Paginate(c)).Preload("PokemonTypes", func(db *gorm.DB) *gorm.DB {
-		return db.Table(entities.PokemonTypeTableName)
-	}).Order("id asc").Find(&pokemons).Error()
+	db := s.repository.Table(entities.PokemonTableName).
+		Joins("left join pokemon_types on pokemon_types.pokemon_id = pokemons.pokemon_id").
+		Where("pokemons.name LIKE ?", fmt.Sprintf("%s%%", c.Query("name"))).
+		Group("pokemons.pokemon_id")
+
+	if len(c.Query("pokemon_type")) > 0 {
+		db = db.Where("pokemon_types.name = ?", c.Query("pokemon_type"))
+	}
+
+	var totalRecords int64
+	err := db.Count(&totalRecords).Error()
 	if err != nil {
 		return nil, 0, err
 	}
 
-	var totalRecords int64
-	err = s.repository.Table(entities.PokemonTableName).Count(&totalRecords).Error()
+	err = db.
+		Preload("PokemonTypes", func(db *gorm.DB) *gorm.DB {
+			return db.Table(entities.PokemonTypeTableName)
+		}).
+		Scopes(utils.Paginate(c)).
+		Order("id asc").
+		Find(&pokemons).
+		Error()
 	if err != nil {
 		return nil, 0, err
 	}
