@@ -33,7 +33,7 @@ func (s pokemonService) GetPokemons(c *fiber.Ctx) ([]dtos.PokemonList, int64, er
 	db := s.repository.Table(entities.PokemonTableName).
 		Joins("left join pokemon_types on pokemon_types.pokemon_id = pokemons.pokemon_id").
 		Where("pokemons.name LIKE ?", fmt.Sprintf("%s%%", c.Query("name"))).
-		Group("pokemons.pokemon_id")
+		Group("pokemons.id")
 
 	if len(c.Query("pokemon_type")) > 0 {
 		db = db.Where("pokemon_types.name = ?", c.Query("pokemon_type"))
@@ -50,7 +50,7 @@ func (s pokemonService) GetPokemons(c *fiber.Ctx) ([]dtos.PokemonList, int64, er
 			return db.Table(entities.PokemonTypeTableName)
 		}).
 		Scopes(utils.Paginate(c)).
-		Order("id asc").
+		Order(fmt.Sprintf("%s %s", c.Query("sort_by"), c.Query("sort_order"))).
 		Find(&pokemons).
 		Error()
 	if err != nil {
