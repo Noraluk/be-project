@@ -10,6 +10,7 @@ func NewRoutes(app *fiber.App) {
 	// pokemon
 	pokemonGroup := apiGroup.Group("/pokemons")
 	pokemonGroup.Get("", handler.pokemon.GetPokemons)
+	pokemonGroup.Post("", handler.pokemon.CreatePokemon)
 
 	pokemonItemGroup := pokemonGroup.Group("/items")
 	pokemonItemGroup.Get("", handler.pokemon.GetPokemonItems)

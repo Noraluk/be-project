@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"be-project/api/models"
+	"be-project/api/models/request"
 	"be-project/api/services"
 
 	"github.com/gofiber/fiber/v2"
@@ -10,6 +11,7 @@ import (
 type PokemonHandler interface {
 	GetPokemons(c *fiber.Ctx) error
 	GetPokemon(c *fiber.Ctx) error
+	CreatePokemon(c *fiber.Ctx) error
 	GetPokemonItems(c *fiber.Ctx) error
 }
 
@@ -48,7 +50,8 @@ func (h pokemonHandler) GetPokemon(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(models.Response{
-		Data: pokemon,
+		Status: fiber.StatusOK,
+		Data:   pokemon,
 	})
 }
 
@@ -59,6 +62,24 @@ func (h pokemonHandler) GetPokemonItems(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(models.Response{
-		Data: items,
+		Status: fiber.StatusOK,
+		Data:   items,
 	}.ToPagination(c, totalRecords))
+}
+
+func (h pokemonHandler) CreatePokemon(c *fiber.Ctx) error {
+	var req request.CreatedPokemon
+	err := c.BodyParser(&req)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
+
+	err = h.pokemonService.CreatePokemon(req)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	}
+
+	return c.Status(fiber.StatusOK).JSON(models.Response{
+		Status: fiber.StatusOK,
+	})
 }

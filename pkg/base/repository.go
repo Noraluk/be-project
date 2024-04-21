@@ -26,6 +26,7 @@ type BaseRepository[T any] interface {
 	Group(name string) BaseRepository[T]
 	Order(value interface{}) BaseRepository[T]
 	Count(count *int64) BaseRepository[T]
+	Scan(dest interface{}) BaseRepository[T]
 
 	Transaction(fc func(tx *gorm.DB) error, opts ...*sql.TxOptions) error
 
@@ -124,6 +125,10 @@ func (b baseRepository[T]) Order(value interface{}) BaseRepository[T] {
 
 func (b baseRepository[T]) Count(count *int64) BaseRepository[T] {
 	return Wrap[T](b.db.Count(count))
+}
+
+func (b baseRepository[T]) Scan(dest interface{}) BaseRepository[T] {
+	return Wrap[T](b.db.Scan(dest))
 }
 
 func (b baseRepository[T]) Transaction(fc func(tx *gorm.DB) error, opts ...*sql.TxOptions) error {

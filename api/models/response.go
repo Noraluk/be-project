@@ -3,7 +3,8 @@ package models
 import "github.com/gofiber/fiber/v2"
 
 type Response struct {
-	Data interface{} `json:"data"`
+	Status int         `json:"status"`
+	Data   interface{} `json:"data,omitempty"`
 }
 
 func (m Response) ToPagination(c *fiber.Ctx, totalRecords int64) PaginationResponse {

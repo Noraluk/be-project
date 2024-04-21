@@ -3,9 +3,11 @@ package services
 import (
 	"be-project/api/dtos"
 	"be-project/api/entities"
+	"be-project/api/models/request"
 	"be-project/api/utils"
 	"be-project/pkg/base"
 	"fmt"
+	"sync"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -14,6 +16,7 @@ import (
 type PokemonService interface {
 	GetPokemons(c *fiber.Ctx) ([]dtos.PokemonList, int64, error)
 	GetPokemon(pokemonID int) (dtos.PokemonDetail, error)
+	CreatePokemon(req request.CreatedPokemon) error
 	GetPokemonItems(c *fiber.Ctx) ([]entities.PokemonItem, int64, error)
 }
 
@@ -118,6 +121,113 @@ func (s pokemonService) GetPokemon(id int) (dtos.PokemonDetail, error) {
 	})
 
 	return pokemonDetail, nil
+}
+
+func (s pokemonService) CreatePokemon(req request.CreatedPokemon) error {
+	var pokemonTypes []entities.PokemonType
+	var pokemonAbilities []entities.PokemonAbility
+	var pokemonWeaknesses []entities.PokemonWeakness
+	var pokemonStats []entities.PokemonStat
+
+	channelWg := &sync.WaitGroup{}
+	stopCh := make(chan struct{}, 1)
+	pokemonTypeCh := make(chan entities.PokemonType, 1)
+	pokemonAbilityCh := make(chan entities.PokemonAbility, 1)
+	pokemonWeaknessCh := make(chan entities.PokemonWeakness, 1)
+	pokemonStatCh := make(chan entities.PokemonStat, 1)
+
+	channelWg.Add(1)
+	go func() {
+		defer channelWg.Done()
+
+		for {
+			select {
+			case pt := <-pokemonTypeCh:
+				pokemonTypes = append(pokemonTypes, pt)
+			case pa := <-pokemonAbilityCh:
+				pokemonAbilities = append(pokemonAbilities, pa)
+			case pw := <-pokemonWeaknessCh:
+				pokemonWeaknesses = append(pokemonWeaknesses, pw)
+			case ps := <-pokemonStatCh:
+				pokemonStats = append(pokemonStats, ps)
+			case <-stopCh:
+				return
+			}
+		}
+	}()
+
+	wg := &sync.WaitGroup{}
+	wg.Add(4)
+	go func() {
+		defer wg.Done()
+		for _, pokemonType := range req.PokemonTypes {
+			pokemonTypes = append(pokemonTypes, entities.PokemonType{
+				Name: pokemonType,
+			})
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		for _, ability := range req.PokemonAbilities {
+			pokemonAbilities = append(pokemonAbilities, entities.PokemonAbility{
+				Name: ability,
+			})
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		for _, weakness := range req.PokemonWeaknesses {
+			pokemonWeaknesses = append(pokemonWeaknesses, entities.PokemonWeakness{
+				Name: weakness,
+			})
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		for _, stat := range req.PokemonStats {
+			pokemonStats = append(pokemonStats, entities.PokemonStat{
+				BaseStat: stat.BaseStat,
+				Name:     stat.Name,
+			})
+		}
+	}()
+
+	wg.Wait()
+	close(stopCh)
+	channelWg.Wait()
+
+	var maxID int
+	err := s.repository.Table(entities.PokemonTableName).Select("max(id)").Scan(&maxID).Error()
+	if err != nil {
+		return err
+	}
+
+	pokemon := entities.Pokemon{
+		ID:                                   maxID + 1,
+		PokemonID:                            req.PokemonID,
+		Name:                                 req.Name,
+		SpriteFrontDefaultShowdownURL:        req.SpriteFrontDefaultShowdownURL,
+		SpriteFrontDefaultOfficialArtworkURL: req.SpriteFrontDefaultOfficialArtworkURL,
+		Height:                               req.Height,
+		Weight:                               req.Weight,
+		BaseExperience:                       req.BaseExperience,
+		MinimumLevel:                         req.MinimumLevel,
+		EvolvedPokemonID:                     req.EvolvedPokemonID,
+		PokemonTypes:                         pokemonTypes,
+		PokemonAbilities:                     pokemonAbilities,
+		PokemonWeaknesses:                    pokemonWeaknesses,
+		PokemonStats:                         pokemonStats,
+	}
+
+	err = s.repository.Create(&pokemon).Error()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s pokemonService) GetPokemonItems(c *fiber.Ctx) ([]entities.PokemonItem, int64, error) {
