@@ -10,7 +10,6 @@ type CreatedPokemon struct {
 	Height                               float64  `json:"height"`
 	Weight                               float64  `json:"weight"`
 	BaseExperience                       int      `json:"base_experience"`
-	PokemonWeaknesses                    []string `json:"pokemon_weaknesses"`
 	PokemonStats                         []struct {
 		Name     string `json:"name"`
 		BaseStat int    `json:"base_stat"`

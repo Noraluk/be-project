@@ -1,6 +1,7 @@
 package services
 
 import (
+	"be-project/api/constants"
 	"be-project/api/dtos"
 	"be-project/api/entities"
 	"be-project/api/models/request"
@@ -133,7 +134,7 @@ func (s pokemonService) CreatePokemon(req request.CreatedPokemon) error {
 	stopCh := make(chan struct{}, 1)
 	pokemonTypeCh := make(chan entities.PokemonType, 1)
 	pokemonAbilityCh := make(chan entities.PokemonAbility, 1)
-	pokemonWeaknessCh := make(chan entities.PokemonWeakness, 1)
+	pokemonWeaknessCh := make(chan []entities.PokemonWeakness)
 	pokemonStatCh := make(chan entities.PokemonStat, 1)
 
 	channelWg.Add(1)
@@ -147,7 +148,7 @@ func (s pokemonService) CreatePokemon(req request.CreatedPokemon) error {
 			case pa := <-pokemonAbilityCh:
 				pokemonAbilities = append(pokemonAbilities, pa)
 			case pw := <-pokemonWeaknessCh:
-				pokemonWeaknesses = append(pokemonWeaknesses, pw)
+				pokemonWeaknesses = append(pokemonWeaknesses, pw...)
 			case ps := <-pokemonStatCh:
 				pokemonStats = append(pokemonStats, ps)
 			case <-stopCh:
@@ -157,41 +158,45 @@ func (s pokemonService) CreatePokemon(req request.CreatedPokemon) error {
 	}()
 
 	wg := &sync.WaitGroup{}
-	wg.Add(4)
+	wg.Add(3)
 	go func() {
 		defer wg.Done()
+
+		pwMap := make(map[string]bool)
 		for _, pokemonType := range req.PokemonTypes {
-			pokemonTypes = append(pokemonTypes, entities.PokemonType{
+			pokemonTypeCh <- entities.PokemonType{
 				Name: pokemonType,
-			})
+			}
+
+			pws := []entities.PokemonWeakness{}
+			for _, v := range constants.PokemonWeakness[pokemonType] {
+				if !pwMap[v] {
+					pws = append(pws, entities.PokemonWeakness{
+						Name: v,
+					})
+				}
+				pwMap[v] = true
+			}
+			pokemonWeaknessCh <- pws
 		}
 	}()
 
 	go func() {
 		defer wg.Done()
 		for _, ability := range req.PokemonAbilities {
-			pokemonAbilities = append(pokemonAbilities, entities.PokemonAbility{
+			pokemonAbilityCh <- entities.PokemonAbility{
 				Name: ability,
-			})
-		}
-	}()
-
-	go func() {
-		defer wg.Done()
-		for _, weakness := range req.PokemonWeaknesses {
-			pokemonWeaknesses = append(pokemonWeaknesses, entities.PokemonWeakness{
-				Name: weakness,
-			})
+			}
 		}
 	}()
 
 	go func() {
 		defer wg.Done()
 		for _, stat := range req.PokemonStats {
-			pokemonStats = append(pokemonStats, entities.PokemonStat{
+			pokemonStatCh <- entities.PokemonStat{
 				BaseStat: stat.BaseStat,
 				Name:     stat.Name,
-			})
+			}
 		}
 	}()
 
