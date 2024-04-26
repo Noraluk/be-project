@@ -16,4 +16,5 @@ func NewRoutes(app *fiber.App) {
 	pokemonItemGroup.Get("", handler.pokemon.GetPokemonItems)
 
 	pokemonGroup.Get("/:id", handler.pokemon.GetPokemon)
+	pokemonGroup.Delete("/:id", handler.pokemon.DeletePokemon)
 }

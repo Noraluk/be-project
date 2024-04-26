@@ -12,6 +12,7 @@ type PokemonHandler interface {
 	GetPokemons(c *fiber.Ctx) error
 	GetPokemon(c *fiber.Ctx) error
 	CreatePokemon(c *fiber.Ctx) error
+	DeletePokemon(c *fiber.Ctx) error
 	GetPokemonItems(c *fiber.Ctx) error
 }
 
@@ -75,6 +76,22 @@ func (h pokemonHandler) CreatePokemon(c *fiber.Ctx) error {
 	}
 
 	err = h.pokemonService.CreatePokemon(req)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	}
+
+	return c.Status(fiber.StatusOK).JSON(models.Response{
+		Status: fiber.StatusOK,
+	})
+}
+
+func (h pokemonHandler) DeletePokemon(c *fiber.Ctx) error {
+	id, err := c.ParamsInt("id")
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
+
+	err = h.pokemonService.DeletePokemon(c, id)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}

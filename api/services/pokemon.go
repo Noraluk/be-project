@@ -18,6 +18,7 @@ type PokemonService interface {
 	GetPokemons(c *fiber.Ctx) ([]dtos.PokemonList, int64, error)
 	GetPokemon(pokemonID int) (dtos.PokemonDetail, error)
 	CreatePokemon(req request.CreatedPokemon) error
+	DeletePokemon(c *fiber.Ctx, id int) error
 	GetPokemonItems(c *fiber.Ctx) ([]entities.PokemonItem, int64, error)
 }
 
@@ -228,6 +229,47 @@ func (s pokemonService) CreatePokemon(req request.CreatedPokemon) error {
 	}
 
 	err = s.repository.Create(&pokemon).Error()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s pokemonService) DeletePokemon(c *fiber.Ctx, id int) error {
+	var pokemon entities.Pokemon
+	err := s.repository.First(&pokemon, id).Error()
+	if err != nil {
+		return err
+	}
+
+	err = s.repository.Transaction(func(tx *gorm.DB) error {
+		err := tx.Delete(&entities.PokemonAbility{}, "pokemon_id = ?", pokemon.PokemonID).Error
+		if err != nil {
+			return err
+		}
+
+		err = tx.Delete(&entities.PokemonStat{}, "pokemon_id = ?", pokemon.PokemonID).Error
+		if err != nil {
+			return err
+		}
+
+		err = tx.Delete(&entities.PokemonType{}, "pokemon_id = ?", pokemon.PokemonID).Error
+		if err != nil {
+			return err
+		}
+
+		err = tx.Delete(&entities.PokemonWeakness{}, "pokemon_id = ?", pokemon.PokemonID).Error
+		if err != nil {
+			return err
+		}
+
+		err = tx.Delete(&entities.Pokemon{}, "id = ?", id).Error
+		if err != nil {
+			return err
+		}
+		return nil
+	})
 	if err != nil {
 		return err
 	}
