@@ -1,6 +1,7 @@
 package database
 
 import (
+	"be-project/api/entities"
 	"be-project/pkg/config"
 	"fmt"
 
@@ -19,6 +20,8 @@ func Init() error {
 	if err != nil {
 		return err
 	}
+
+	db.AutoMigrate(&entities.Auth{})
 
 	return nil
 }

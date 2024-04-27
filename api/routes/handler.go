@@ -8,6 +8,7 @@ import (
 
 type handler struct {
 	pokemon handlers.PokemonHandler
+	auth    handlers.AuthHandler
 }
 
 func NewHandler() handler {
@@ -16,8 +17,10 @@ func NewHandler() handler {
 
 	// service
 	pokemonService := services.NewPokemonService(repository)
+	authService := services.NewAuthService(repository)
 
 	return handler{
 		pokemon: handlers.NewPokemonHandler(pokemonService),
+		auth:    handlers.NewAuthHandler(authService),
 	}
 }

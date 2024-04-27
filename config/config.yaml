@@ -4,3 +4,6 @@ database:
   username: admin
   password: 
   database_name: postgres
+
+auth:
+  secret: "foo"

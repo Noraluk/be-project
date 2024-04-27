@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"be-project/api/models"
 	"be-project/api/models/request"
+	"be-project/api/models/response"
 	"be-project/api/services"
 
 	"github.com/gofiber/fiber/v2"
@@ -34,7 +34,7 @@ func (h pokemonHandler) GetPokemons(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
-	return c.Status(fiber.StatusOK).JSON(models.Response{
+	return c.Status(fiber.StatusOK).JSON(response.Response{
 		Data: pokemons,
 	}.ToPagination(c, totalRecords))
 }
@@ -50,7 +50,7 @@ func (h pokemonHandler) GetPokemon(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
-	return c.Status(fiber.StatusOK).JSON(models.Response{
+	return c.Status(fiber.StatusOK).JSON(response.Response{
 		Status: fiber.StatusOK,
 		Data:   pokemon,
 	})
@@ -62,7 +62,7 @@ func (h pokemonHandler) GetPokemonItems(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
-	return c.Status(fiber.StatusOK).JSON(models.Response{
+	return c.Status(fiber.StatusOK).JSON(response.Response{
 		Status: fiber.StatusOK,
 		Data:   items,
 	}.ToPagination(c, totalRecords))
@@ -80,7 +80,7 @@ func (h pokemonHandler) CreatePokemon(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
-	return c.Status(fiber.StatusOK).JSON(models.Response{
+	return c.Status(fiber.StatusOK).JSON(response.Response{
 		Status: fiber.StatusOK,
 	})
 }
@@ -93,10 +93,10 @@ func (h pokemonHandler) DeletePokemon(c *fiber.Ctx) error {
 
 	err = h.pokemonService.DeletePokemon(c, id)
 	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+		return fiber.NewError(fiber.StatusInternalServerError)
 	}
 
-	return c.Status(fiber.StatusOK).JSON(models.Response{
+	return c.Status(fiber.StatusOK).JSON(response.Response{
 		Status: fiber.StatusOK,
 	})
 }

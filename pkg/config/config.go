@@ -6,6 +6,8 @@ import (
 
 type Config struct {
 	Database database `mapstructure:"database"`
+	Redis    redis    `mapstructure:"redis"`
+	Auth     auth     `mapstructure:"auth"`
 }
 
 type database struct {
@@ -14,6 +16,17 @@ type database struct {
 	Username     string `mapstructure:"username"`
 	Password     string `mapstructure:"password"`
 	DatabaseName string `mapstructure:"database_name"`
+}
+
+type redis struct {
+	Host     string `mapstructure:"host"`
+	Port     int    `mapstructure:"port"`
+	Username string `mapstructure:"username"`
+	Password string `mapstructure:"password"`
+}
+
+type auth struct {
+	Secret string `mapstructure:"secret"`
 }
 
 var config Config
