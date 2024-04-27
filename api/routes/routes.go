@@ -1,14 +1,21 @@
 package routes
 
-import "github.com/gofiber/fiber/v2"
+import (
+	"be-project/api/middlewares"
+
+	"github.com/gofiber/fiber/v2"
+)
 
 func NewRoutes(app *fiber.App) {
 	handler := NewHandler()
 
 	apiGroup := app.Group("/api")
+	apiGroup.Post("/register", handler.auth.Register)
+	apiGroup.Post("/login", handler.auth.Login)
 
-	pokemonGroup := apiGroup.Group("/pokemons")
-	pokemonItemGroup := pokemonGroup.Group("/items")
+	protectedGroup := apiGroup.Group("", middlewares.Protected())
+	pokemonGroup := protectedGroup.Group("/pokemons")
+	pokemonItemGroup := protectedGroup.Group("/pokemon-items")
 
 	// pokemon
 	pokemonGroup.Get("", handler.pokemon.GetPokemons)
@@ -19,6 +26,4 @@ func NewRoutes(app *fiber.App) {
 	// pokemon item
 	pokemonItemGroup.Get("", handler.pokemon.GetPokemonItems)
 
-	apiGroup.Post("/register", handler.auth.Register)
-	apiGroup.Post("/login", handler.auth.Login)
 }
