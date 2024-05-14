@@ -13,6 +13,7 @@ func Protected() fiber.Handler {
 	return jwtware.New(jwtware.Config{
 		SigningKey:   jwtware.SigningKey{Key: []byte(config.Auth.Secret)},
 		ErrorHandler: jwtError,
+		ContextKey:   "user",
 	})
 }
 

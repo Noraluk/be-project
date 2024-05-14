@@ -9,6 +9,7 @@ import (
 type handler struct {
 	pokemon handlers.PokemonHandler
 	auth    handlers.AuthHandler
+	chat    handlers.ChatHandler
 }
 
 func NewHandler() handler {
@@ -22,5 +23,6 @@ func NewHandler() handler {
 	return handler{
 		pokemon: handlers.NewPokemonHandler(pokemonService),
 		auth:    handlers.NewAuthHandler(authService),
+		chat:    handlers.NewChatHandler(),
 	}
 }
