@@ -1,16 +1,18 @@
 package handlers
 
 import (
-	"fmt"
+	"be-project/api/entities"
+	"be-project/pkg/base"
 	"log"
+	"time"
 
 	"github.com/gofiber/contrib/websocket"
 )
 
 type Message struct {
-	Username string `json:"username"`
-	Target   string `json:"target"`
-	Message  string `json:"message"`
+	Sender    string `json:"sender"`
+	Recipient string `json:"recipient"`
+	Message   string `json:"message"`
 }
 
 type Client struct {
@@ -29,15 +31,17 @@ type chatHandler struct {
 	broadcast  chan Message
 	unregister chan Client
 	users      []string
+	repository base.BaseRepository[any]
 }
 
-func NewChatHandler() ChatHandler {
+func NewChatHandler(repository base.BaseRepository[any]) ChatHandler {
 	return &chatHandler{
 		clients:    make(map[string]*websocket.Conn),
 		register:   make(chan Client),
 		broadcast:  make(chan Message),
 		unregister: make(chan Client),
 		users:      make([]string, 0),
+		repository: repository,
 	}
 }
 
@@ -50,14 +54,24 @@ func (h chatHandler) CreateConnection() {
 			h.notifyClients()
 
 		case message := <-h.broadcast:
-			source := h.clients[message.Username]
-			destination, ok := h.clients[message.Target]
+			sender := h.clients[message.Sender]
+			recipient, ok := h.clients[message.Recipient]
 
-			if err := source.Conn.WriteJSON(message); err != nil {
+			chat := entities.Chat{
+				Sender:    message.Sender,
+				Recipient: message.Recipient,
+				Message:   message.Message,
+				CreatedAt: time.Now(),
+			}
+			if err := h.repository.Create(&chat).Error(); err != nil {
+				log.Println("create chat failed, error: ", err)
+			}
+
+			if err := sender.Conn.WriteJSON(message); err != nil {
 				log.Println("write:", err)
 			}
 			if ok {
-				if err := destination.Conn.WriteJSON(message); err != nil {
+				if err := recipient.Conn.WriteJSON(message); err != nil {
 					log.Println("write:", err)
 				}
 			}
@@ -78,7 +92,7 @@ func (h chatHandler) CreateConnection() {
 
 func (h chatHandler) Broadcast(c *websocket.Conn) {
 	ct := Client{
-		Username: c.Locals("username").(string),
+		Username: c.Locals("sender").(string),
 		Conn:     c,
 	}
 
@@ -89,7 +103,20 @@ func (h chatHandler) Broadcast(c *websocket.Conn) {
 
 	h.register <- ct
 
-	fmt.Println("foo")
+	recipient := c.Locals("recipient").(string)
+	if len(recipient) > 0 {
+		var chats []entities.Chat
+		if err := h.repository.Where("(sender = '1' and recipient = '2') or (sender = '2' and recipient = '1')").Order("id desc").Limit(50).Find(&chats).Error(); err != nil {
+			log.Println("find chats failed, error: ", err)
+		}
+
+		for i := len(chats) - 1; i >= 0; i-- {
+			err := c.WriteJSON(Message{Sender: chats[i].Sender, Recipient: chats[i].Recipient, Message: chats[i].Message})
+			if err != nil {
+				log.Println("write failed, error: ", err)
+			}
+		}
+	}
 
 	for {
 		mt, m, err := c.ReadMessage()
@@ -101,16 +128,15 @@ func (h chatHandler) Broadcast(c *websocket.Conn) {
 
 		if mt == websocket.TextMessage {
 			h.broadcast <- Message{
-				Username: c.Locals("username").(string),
-				Target:   c.Locals("target").(string),
-				Message:  string(m),
+				Sender:    c.Locals("sender").(string),
+				Recipient: recipient,
+				Message:   string(m),
 			}
 		}
 	}
 }
 
 func (h chatHandler) notifyClients() {
-	fmt.Println(h.clients)
 	for username, client := range h.clients {
 		clientIDs := []string{}
 		for _, un := range h.users {

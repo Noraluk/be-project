@@ -23,6 +23,6 @@ func NewHandler() handler {
 	return handler{
 		pokemon: handlers.NewPokemonHandler(pokemonService),
 		auth:    handlers.NewAuthHandler(authService),
-		chat:    handlers.NewChatHandler(),
+		chat:    handlers.NewChatHandler(repository),
 	}
 }

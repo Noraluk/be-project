@@ -1,8 +1,8 @@
 database:
   host: localhost
   port: 5432
-  username: admin
-  password: 
+  username: postgres
+  password: admin
   database_name: postgres
 
 auth:

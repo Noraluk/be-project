@@ -25,6 +25,7 @@ type BaseRepository[T any] interface {
 	Joins(query string, args ...interface{}) BaseRepository[T]
 	Group(name string) BaseRepository[T]
 	Order(value interface{}) BaseRepository[T]
+	Limit(limit int) BaseRepository[T]
 	Count(count *int64) BaseRepository[T]
 	Scan(dest interface{}) BaseRepository[T]
 
@@ -121,6 +122,10 @@ func (b baseRepository[T]) Group(name string) BaseRepository[T] {
 
 func (b baseRepository[T]) Order(value interface{}) BaseRepository[T] {
 	return Wrap[T](b.db.Order(value))
+}
+
+func (b baseRepository[T]) Limit(limit int) BaseRepository[T] {
+	return Wrap[T](b.db.Limit(limit))
 }
 
 func (b baseRepository[T]) Count(count *int64) BaseRepository[T] {

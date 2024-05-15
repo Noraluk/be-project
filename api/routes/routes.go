@@ -42,8 +42,8 @@ func NewRoutes(app *fiber.App) {
 		if websocket.IsWebSocketUpgrade(c) {
 			c.Locals("allowed", true)
 
-			c.Locals("username", string(c.Query("username")))
-			c.Locals("target", string(c.Query("target")))
+			c.Locals("sender", string(c.Query("sender")))
+			c.Locals("recipient", string(c.Query("recipient")))
 			return c.Next()
 		}
 		return fiber.ErrUpgradeRequired
