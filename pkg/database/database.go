@@ -21,7 +21,7 @@ func Init() error {
 		return err
 	}
 
-	db.AutoMigrate(&entities.Auth{}, &entities.Chat{})
+	db.AutoMigrate(&entities.Auth{}, &entities.Chat{}, &entities.ChatUser{})
 
 	return nil
 }

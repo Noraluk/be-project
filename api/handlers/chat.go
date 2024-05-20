@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"be-project/api/dtos"
 	"be-project/api/entities"
 	"be-project/pkg/base"
 	"log"
@@ -9,10 +10,19 @@ import (
 	"github.com/gofiber/contrib/websocket"
 )
 
+type RequestType int
+
+const (
+	ChatHistory RequestType = 1
+	Chat        RequestType = 2
+)
+
 type Message struct {
-	Sender    string `json:"sender"`
-	Recipient string `json:"recipient"`
-	Message   string `json:"message"`
+	Sender      string      `json:"sender"`
+	Recipient   string      `json:"recipient"`
+	Message     string      `json:"message"`
+	RequestType RequestType `json:"request_type"`
+	Unread      bool        `json:"unread"`
 }
 
 type Client struct {
@@ -30,7 +40,6 @@ type chatHandler struct {
 	register   chan Client
 	broadcast  chan Message
 	unregister chan Client
-	users      []string
 	repository base.BaseRepository[any]
 }
 
@@ -40,7 +49,6 @@ func NewChatHandler(repository base.BaseRepository[any]) ChatHandler {
 		register:   make(chan Client),
 		broadcast:  make(chan Message),
 		unregister: make(chan Client),
-		users:      make([]string, 0),
 		repository: repository,
 	}
 }
@@ -50,7 +58,27 @@ func (h chatHandler) CreateConnection() {
 		select {
 		case client := <-h.register:
 			h.clients[client.Username] = client.Conn
-			h.users = append(h.users, client.Username)
+
+			var chatUser entities.ChatUser
+			err := h.repository.First(&chatUser, "username = ?", client.Username).Error()
+			if err == nil {
+				err = h.repository.Model(&entities.ChatUser{}).Where("username = ?", client.Username).Update("is_loggin", true).Error()
+				if err != nil {
+					log.Println("update is loggin failed, eror: ", err)
+				}
+			} else {
+				cu := entities.ChatUser{
+					Username:  client.Username,
+					IsLoggin:  true,
+					UpdatedAt: time.Now(),
+				}
+
+				err = h.repository.Create(&cu).Error()
+				if err != nil {
+					log.Println("create chat user failed, error: ", err)
+				}
+			}
+
 			h.notifyClients()
 
 		case message := <-h.broadcast:
@@ -61,6 +89,7 @@ func (h chatHandler) CreateConnection() {
 				Sender:    message.Sender,
 				Recipient: message.Recipient,
 				Message:   message.Message,
+				Unread:    message.Unread,
 				CreatedAt: time.Now(),
 			}
 			if err := h.repository.Create(&chat).Error(); err != nil {
@@ -74,25 +103,49 @@ func (h chatHandler) CreateConnection() {
 				if err := recipient.Conn.WriteJSON(message); err != nil {
 					log.Println("write:", err)
 				}
+				var chatUser dtos.ChatUser
+				err := h.repository.Table("chats c").
+					Select("c.sender, c.recipient, count(*) as unread_count").
+					Where("c.unread = true").
+					Group("c.sender, c.recipient").
+					First(&chatUser, "c.recipient = ? and c.sender = ?", message.Recipient, message.Sender).Error()
+				if err != nil {
+					log.Println("find chat user failed, error: ", err)
+				}
+				if err := recipient.Conn.WriteJSON(chatUser); err != nil {
+					log.Println("write:", err)
+				}
 			}
 
 		case client := <-h.unregister:
-			delete(h.clients, client.Username)
-			var i int
-			for j, user := range h.users {
-				if user == client.Username {
-					i = j
+			var chatUser entities.ChatUser
+			err := h.repository.First(&chatUser, "username = ?", client.Username).Error()
+			if err == nil {
+				err = h.repository.Model(&chatUser).Update("is_loggin", false).Error()
+				if err != nil {
+					log.Println("update is loggin failed, eror: ", err)
 				}
 			}
-			h.users = append(h.users[:i], h.users[i+1:]...)
+
+			delete(h.clients, client.Username)
 			h.notifyClients()
 		}
 	}
 }
 
+type Request struct {
+	Sender string `json:"sender"`
+}
+
 func (h chatHandler) Broadcast(c *websocket.Conn) {
+	var req Request
+	err := c.ReadJSON(&req)
+	if err != nil {
+		log.Println("read json failed, error: ", err)
+	}
+
 	ct := Client{
-		Username: c.Locals("sender").(string),
+		Username: req.Sender,
 		Conn:     c,
 	}
 
@@ -103,50 +156,59 @@ func (h chatHandler) Broadcast(c *websocket.Conn) {
 
 	h.register <- ct
 
-	recipient := c.Locals("recipient").(string)
-	if len(recipient) > 0 {
-		var chats []entities.Chat
-		if err := h.repository.Where("(sender = '1' and recipient = '2') or (sender = '2' and recipient = '1')").Order("id desc").Limit(50).Find(&chats).Error(); err != nil {
-			log.Println("find chats failed, error: ", err)
-		}
-
-		for i := len(chats) - 1; i >= 0; i-- {
-			err := c.WriteJSON(Message{Sender: chats[i].Sender, Recipient: chats[i].Recipient, Message: chats[i].Message})
-			if err != nil {
-				log.Println("write failed, error: ", err)
-			}
-		}
-	}
-
 	for {
-		mt, m, err := c.ReadMessage()
+		var msg Message
+		err := c.ReadJSON(&msg)
 		if err != nil {
 			log.Println("read:", err)
 			break
 		}
-		log.Printf("recv: %s", m)
+		log.Printf("recv: %v", msg)
 
-		if mt == websocket.TextMessage {
-			h.broadcast <- Message{
-				Sender:    c.Locals("sender").(string),
-				Recipient: recipient,
-				Message:   string(m),
+		switch msg.RequestType {
+		case ChatHistory:
+			var chats []entities.Chat
+			if err := h.repository.Where("(sender = ? and recipient = ?) or (sender = ? and recipient = ?)", msg.Sender, msg.Recipient, msg.Recipient, msg.Sender).Order("id desc").Limit(50).Find(&chats).Error(); err != nil {
+				log.Println("find chats failed, error: ", err)
 			}
+
+			for i := len(chats) - 1; i >= 0; i-- {
+				err := c.WriteJSON(Message{Sender: chats[i].Sender, Recipient: chats[i].Recipient, Message: chats[i].Message, Unread: chats[i].Unread})
+				if err != nil {
+					log.Println("write failed, error: ", err)
+				}
+			}
+			h.markMessagesAsRead(msg.Sender, msg.Recipient)
+		case Chat:
+			msg.Unread = true
+			h.broadcast <- msg
 		}
+
 	}
 }
 
 func (h chatHandler) notifyClients() {
 	for username, client := range h.clients {
-		clientIDs := []string{}
-		for _, un := range h.users {
-			if un != username {
-				clientIDs = append(clientIDs, un)
-			}
+		var chatUsers []dtos.ChatUser
+		err := h.repository.Table("chats c").
+			Select("c.sender, c.recipient, count(*) as unread_count").
+			Where("c.unread = true").
+			Group("c.sender, c.recipient").
+			Find(&chatUsers, "c.recipient = ?", username).Error()
+		if err != nil {
+			log.Println("find chat users failed, error: ", err)
 		}
-		err := client.WriteJSON(clientIDs)
+
+		err = client.WriteJSON(chatUsers)
 		if err != nil {
 			log.Println("notify error:", err)
 		}
+	}
+}
+
+func (h chatHandler) markMessagesAsRead(sender, recipient string) {
+	err := h.repository.Model(&entities.Chat{}).Where("recipient = ? AND sender = ? AND unread = ?", sender, recipient, true).Update("unread", false).Error()
+	if err != nil {
+		log.Printf("error marking messages as read: %v", err)
 	}
 }
