@@ -24,6 +24,7 @@ type BaseRepository[T any] interface {
 	Where(query interface{}, args ...interface{}) BaseRepository[T]
 	Joins(query string, args ...interface{}) BaseRepository[T]
 	Group(name string) BaseRepository[T]
+	Having(query interface{}, args ...interface{}) BaseRepository[T]
 	Order(value interface{}) BaseRepository[T]
 	Limit(limit int) BaseRepository[T]
 	Count(count *int64) BaseRepository[T]
@@ -118,6 +119,10 @@ func (b baseRepository[T]) Joins(query string, args ...interface{}) BaseReposito
 
 func (b baseRepository[T]) Group(name string) BaseRepository[T] {
 	return Wrap[T](b.db.Group(name))
+}
+
+func (b baseRepository[T]) Having(query interface{}, args ...interface{}) BaseRepository[T] {
+	return Wrap[T](b.db.Having(query, args...))
 }
 
 func (b baseRepository[T]) Order(value interface{}) BaseRepository[T] {

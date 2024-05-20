@@ -190,11 +190,11 @@ func (h chatHandler) Broadcast(c *websocket.Conn) {
 func (h chatHandler) notifyClients() {
 	for username, client := range h.clients {
 		var chatUsers []dtos.ChatUser
-		err := h.repository.Table("chats c").
-			Select("c.sender, c.recipient, count(*) as unread_count").
-			Where("c.unread = true").
-			Group("c.sender, c.recipient").
-			Find(&chatUsers, "c.recipient = ?", username).Error()
+		err := h.repository.Table("chat_users cu").
+			Select("cu.username, count(case when unread = true then 1 end) as unread_count").
+			Joins("left join chats c on c.sender = cu.username").
+			Group("cu.username, c.recipient, c.unread").
+			Having("cu.username != ? and c.recipient = ?", username, username).Find(&chatUsers).Error()
 		if err != nil {
 			log.Println("find chat users failed, error: ", err)
 		}

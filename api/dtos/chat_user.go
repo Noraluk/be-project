@@ -1,7 +1,6 @@
 package dtos
 
 type ChatUser struct {
-	Sender      string `json:"sender"`
-	Recipient   string `json:"recipient"`
+	Username    string `json:"username"`
 	UnreadCount int    `json:"unread_count"`
 }
