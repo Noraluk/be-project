@@ -100,21 +100,12 @@ func (h chatHandler) CreateConnection() {
 				log.Println("write:", err)
 			}
 			if ok {
+				h.online(recipient, message.Recipient)
+
 				if err := recipient.Conn.WriteJSON(message); err != nil {
 					log.Println("write:", err)
 				}
-				var chatUser dtos.ChatUser
-				err := h.repository.Table("chats c").
-					Select("c.sender, c.recipient, count(*) as unread_count").
-					Where("c.unread = true").
-					Group("c.sender, c.recipient").
-					First(&chatUser, "c.recipient = ? and c.sender = ?", message.Recipient, message.Sender).Error()
-				if err != nil {
-					log.Println("find chat user failed, error: ", err)
-				}
-				if err := recipient.Conn.WriteJSON(chatUser); err != nil {
-					log.Println("write:", err)
-				}
+
 			}
 
 		case client := <-h.unregister:
@@ -179,6 +170,7 @@ func (h chatHandler) Broadcast(c *websocket.Conn) {
 				}
 			}
 			h.markMessagesAsRead(msg.Sender, msg.Recipient)
+			h.online(c, msg.Sender)
 		case Chat:
 			msg.Unread = true
 			h.broadcast <- msg
@@ -189,20 +181,24 @@ func (h chatHandler) Broadcast(c *websocket.Conn) {
 
 func (h chatHandler) notifyClients() {
 	for username, client := range h.clients {
-		var chatUsers []dtos.ChatUser
-		err := h.repository.Table("chat_users cu").
-			Select("cu.username, count(case when unread = true then 1 end) as unread_count").
-			Joins("left join chats c on c.sender = cu.username").
-			Group("cu.username, c.recipient, c.unread").
-			Having("cu.username != ? and c.recipient = ?", username, username).Find(&chatUsers).Error()
-		if err != nil {
-			log.Println("find chat users failed, error: ", err)
-		}
+		h.online(client, username)
+	}
+}
 
-		err = client.WriteJSON(chatUsers)
-		if err != nil {
-			log.Println("notify error:", err)
-		}
+func (h chatHandler) online(client *websocket.Conn, username string) {
+	var chatUsers []dtos.ChatUser
+	err := h.repository.Table("chat_users cu").
+		Select("cu.username, count(case when unread = true then 1 end) as unread_count").
+		Joins("left join chats c on c.sender = cu.username").
+		Where("cu.username != ? and is_loggin = true", username).
+		Group("cu.username").Find(&chatUsers).Error()
+	if err != nil {
+		log.Println("find chat users failed, error: ", err)
+	}
+
+	err = client.WriteJSON(chatUsers)
+	if err != nil {
+		log.Println("notify error:", err)
 	}
 }
 
