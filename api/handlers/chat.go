@@ -14,7 +14,8 @@ type RequestType int
 
 const (
 	ChatHistory RequestType = 1
-	Chat        RequestType = 2
+	Chat                    = 2
+	MarkAsRead  RequestType = 3
 )
 
 type Message struct {
@@ -174,6 +175,9 @@ func (h chatHandler) Broadcast(c *websocket.Conn) {
 		case Chat:
 			msg.Unread = true
 			h.broadcast <- msg
+		case MarkAsRead:
+			h.markMessagesAsRead(msg.Sender, msg.Recipient)
+			h.online(c, msg.Sender)
 		}
 
 	}
