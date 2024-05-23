@@ -158,6 +158,7 @@ func (h chatHandler) Broadcast(c *websocket.Conn) {
 
 		switch msg.RequestType {
 		case ChatHistory:
+			h.markMessagesAsRead(msg.Sender, msg.Recipient)
 			var chats []entities.Chat
 			if err := h.repository.Where("(sender = ? and recipient = ?) or (sender = ? and recipient = ?)", msg.Sender, msg.Recipient, msg.Recipient, msg.Sender).Order("id desc").Limit(50).Find(&chats).Error(); err != nil {
 				log.Println("find chats failed, error: ", err)
@@ -169,7 +170,6 @@ func (h chatHandler) Broadcast(c *websocket.Conn) {
 					log.Println("write failed, error: ", err)
 				}
 			}
-			h.markMessagesAsRead(msg.Sender, msg.Recipient)
 			h.online(c, msg.Sender)
 		case Chat:
 			msg.Unread = true
